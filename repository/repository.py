@@ -1,0 +1,65 @@
+import json
+from data.domain import Article
+
+# repository will become datalink when database is integrated
+# not data without embeddings gets in the database
+
+class Repository:
+    config: dict
+    articles: list[Article]
+    
+    def __init__(self):
+        self.config = self.load_config() 
+        self.articles = self.parse_data()
+
+    def load_config(self):
+        try: 
+            config_file_path = "config/config.json"
+            with open(config_file_path, "r") as f:
+                config = json.load(f)
+
+            return config
+        
+        except json.JSONDecodeError:
+            print ("error: reading/decoding {config_file_path} config file")
+            return None
+        except FileNotFoundError: 
+            print ("error: cannot find file {config_file_path}")
+            return None
+
+    def parse_data(self) -> list[Article]:
+        try:
+            file_path = self.config["file_path"]
+
+            with open(file_path, "r") as file:
+                data_list = json.load(file)
+
+            if isinstance(data_list, str):
+                return [self.parse_article(item) for item in data_list]
+            else: 
+                print(f"error: unexpected data format in {file_path}")
+                return []
+        
+        except json.JSONDecodeError:
+            print ("error: reading {file_path} data path")
+            return None
+        except FileNotFoundError:
+            print ("error: cannot find file {file_path}")
+            return None
+
+    def parse_article(self, data_dict: dict) -> Article: 
+        if isinstance(data_dict.get("year"), str):
+            data_dict['year'] = int(data_dict['year'])
+
+        if isinstance(data_dict.get("citations"), str): 
+            data_dict['citations'] = int(data_dict['citations'])
+        
+        if 'coordinates' in data_dict:
+            if isinstance(data_dict['coordinates'].get('x'), str):
+                data_dict['coordinates']['x'] = float(data_dict['coordinates']['x'])
+                data_dict['coordinates']['y'] = float(data_dict['coordinates']['y'])
+
+        return Article(**data_dict)
+    
+    def get_articles(self) -> list[Article]:
+        return self.articles
