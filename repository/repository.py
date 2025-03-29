@@ -13,7 +13,7 @@ class Repository:
         self.articles = self.parse_data()
 
     def load_config(self):
-        try: 
+        try:
             config_file_path = "config/config.json"
             with open(config_file_path, "r") as f:
                 config = json.load(f)
@@ -22,10 +22,10 @@ class Repository:
         
         except json.JSONDecodeError:
             print ("error: reading/decoding {config_file_path} config file")
-            return None
+            return []
         except FileNotFoundError: 
             print ("error: cannot find file {config_file_path}")
-            return None
+            return []
 
     def parse_data(self) -> list[Article]:
         try:
@@ -34,7 +34,7 @@ class Repository:
             with open(file_path, "r") as file:
                 data_list = json.load(file)
 
-            if isinstance(data_list, str):
+            if isinstance(data_list, list):
                 return [self.parse_article(item) for item in data_list]
             else: 
                 print(f"error: unexpected data format in {file_path}")
@@ -42,10 +42,10 @@ class Repository:
         
         except json.JSONDecodeError:
             print ("error: reading {file_path} data path")
-            return None
+            return []
         except FileNotFoundError:
             print ("error: cannot find file {file_path}")
-            return None
+            return []
 
     def parse_article(self, data_dict: dict) -> Article: 
         if isinstance(data_dict.get("year"), str):

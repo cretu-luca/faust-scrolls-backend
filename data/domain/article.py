@@ -12,4 +12,4 @@ class Article(BaseModel):
     year: int
     citations: int
     coordinates: Coordinates
-    embeddings: list[int]
+    embeddings: list[int] = Field(default_factory=list)

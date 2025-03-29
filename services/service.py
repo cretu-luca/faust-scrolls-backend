@@ -10,5 +10,6 @@ class Service:
         all_articles = self.repository.get_articles()
 
         return [article for article in all_articles if article.year == year]
-    
-    def get_article_by_
+
+    def get_all_articles(self):
+        return self.repository.get_articles()
