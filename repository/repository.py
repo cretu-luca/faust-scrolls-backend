@@ -35,7 +35,11 @@ class Repository:
                 data_list = json.load(file)
 
             if isinstance(data_list, list):
-                return [self.parse_article(item) for item in data_list]
+                articles = [self.parse_article(item) for item in data_list]
+                for i, article in enumerate(articles):
+                    if article.index is None:
+                        article.index = i + 1
+                return articles
             else: 
                 print(f"error: unexpected data format in {file_path}")
                 return []
@@ -63,3 +67,60 @@ class Repository:
     
     def get_articles(self) -> list[Article]:
         return self.articles
+    
+    def add_article(self, article: Article) -> None:
+        # Only set index if it's not already set
+        if article.index is None:
+            article.index = len(self.articles) + 1
+            
+        print(f"Repository: Adding article with index: {article.index}")
+        self.articles.append(article)
+        print(f"Repository: Article added successfully, total articles: {len(self.articles)}")
+
+    def update_article(self, article: Article) -> None:
+        target_index = int(article.index) if article.index is not None else None
+        print(f"Repository: Updating article with index: {target_index} (type: {type(target_index)})")
+        
+        # Use string comparison for consistency
+        target_index_str = str(target_index)
+        
+        print("Repository: Current articles:")
+        for i, art in enumerate(self.articles):
+            art_index = int(art.index) if art.index is not None else None
+            art_index_str = str(art_index)
+            print(f"  [{i}] Index: {art_index} (type: {type(art_index)}), str: '{art_index_str}'")
+        
+        found = False
+        for index, existing_article in enumerate(self.articles):
+            # Convert both to strings for comparison
+            existing_index_str = str(existing_article.index)
+            
+            print(f"Repository: Comparing '{existing_index_str}' with target '{target_index_str}'")
+            
+            # First try exact string match, then try integer match
+            if existing_index_str == target_index_str:
+                found = True
+                print(f"Repository: Found article at position {index} by string comparison")
+                self.articles[index] = article
+                print("Repository: Article updated successfully")
+                return
+            # Also try integer comparison as backup
+            elif int(existing_article.index) == target_index:
+                found = True
+                print(f"Repository: Found article at position {index} by integer comparison")
+                self.articles[index] = article
+                print("Repository: Article updated successfully")
+                return
+                
+        if not found:
+            all_indices = [str(a.index) for a in self.articles]
+            print(f"Repository: Article with index {target_index_str} not found")
+            print(f"Repository: Available indices: {all_indices}")
+            raise ValueError(f"Article with index {target_index} not found")
+    
+    def delete_article(self, article_id: str) -> None:
+        self.articles = [article for article in self.articles if article.id != article_id]
+        
+    def delete_article_by_index(self, index: int) -> None:
+        self.articles = [article for article in self.articles if article.index != index]
+        
