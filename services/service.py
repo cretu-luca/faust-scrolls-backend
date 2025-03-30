@@ -41,14 +41,11 @@ class Service:
     def update_article(self, article: Article):
         # article.embeddings = self.abstracts_encoder.encode(article.abstract)
         # article.coordinates = self.abstracts_encoder.get_coordinates(article.embeddings)
-        print(f"Service: Updating article with index: {article.index}")
 
         article.embeddings = [0.1, 0.2, 0.3]
         article.coordinates = Coordinates(x=0.1, y=0.2)
 
-        print(f"Service: Article before update: {article}")
         self.repository.update_article(article)
-        print("Service: Article updated successfully")
 
     def delete_article(self, article_id: str):
         self.repository.delete_article(article_id)

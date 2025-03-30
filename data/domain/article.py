@@ -18,7 +18,6 @@ class Article(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     
     def __init__(self, **data):
-        # Ensure index is converted to int if provided
         if 'index' in data and data['index'] is not None:
             try:
                 data['index'] = int(data['index'])
