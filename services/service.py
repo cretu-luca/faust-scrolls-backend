@@ -1,12 +1,14 @@
 from repository.repository import Repository
 from data.domain.article import Article, Coordinates
 from services.abstracts_encoder import AbstractsEncoder
+from services.validation_service import ValidationService
 
 class Service:
     _repository: Repository
 
     def __init__(self, repository: Repository):
         self.repository = repository
+        self.validation_service = ValidationService()
         # self.abstracts_encoder = AbstractsEncoder()
 
     def get_articles_by_year(self, year: int):
@@ -33,6 +35,9 @@ class Service:
         # article.embeddings = self.abstracts_encoder.encode(article.abstract)
         # article.coordinates = self.abstracts_encoder.get_coordinates(article.embeddings)
 
+        if not self.validation_service.validate_article(article):
+            raise ValueError("Invalid article")
+
         article.embeddings = [0.1, 0.2, 0.3]
         article.coordinates = Coordinates(x=0.1, y=0.2)
 
@@ -41,6 +46,9 @@ class Service:
     def update_article(self, article: Article):
         # article.embeddings = self.abstracts_encoder.encode(article.abstract)
         # article.coordinates = self.abstracts_encoder.get_coordinates(article.embeddings)
+
+        if not self.validation_service.validate_article(article):
+            raise ValueError("Invalid article")
 
         article.embeddings = [0.1, 0.2, 0.3]
         article.coordinates = Coordinates(x=0.1, y=0.2)

@@ -33,6 +33,13 @@ class ArticleInput(BaseModel):
 repository = Repository()
 service = Service(repository)
 
+@app.get("/health")
+def health_check():
+    """
+    Health check endpoint to verify server availability
+    """
+    return {"status": "ok", "message": "Server is running"}
+
 @app.get("/all_articles")
 def get_all():
     return service.get_all_articles()
