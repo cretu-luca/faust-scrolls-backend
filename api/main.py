@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+import os
 
 project_root = str(Path(__file__).parent.parent)
 sys.path.append(project_root)
@@ -7,10 +8,16 @@ sys.path.append(project_root)
 from services.service import Service
 from repository.repository import Repository
 from data.domain.article import Article, Coordinates
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, WebSocket, BackgroundTasks, UploadFile, File, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import uvicorn
+import asyncio
+import random
+import time
+import shutil
+from typing import List, Dict, Any
 
 app = FastAPI()
 
@@ -22,6 +29,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Create uploads directory if it doesn't exist
+UPLOAD_DIR = Path(project_root) / "uploads"
+UPLOAD_DIR.mkdir(exist_ok=True)
+
+# Mount the uploads directory to make files accessible via HTTP
+app.mount("/files", StaticFiles(directory=str(UPLOAD_DIR)), name="files")
+
 class ArticleInput(BaseModel):
     title: str
     authors: str
@@ -32,6 +46,143 @@ class ArticleInput(BaseModel):
 
 repository = Repository()
 service = Service(repository)
+
+# File upload endpoints
+@app.post("/upload/")
+async def upload_file(file: UploadFile = File(...)):
+    try:
+        # Generate a safe filename
+        file_location = UPLOAD_DIR / file.filename
+        
+        # Save the file in chunks to handle large files efficiently
+        with open(file_location, "wb") as buffer:
+            # Read and write the file in chunks of 1MB
+            chunk_size = 1024 * 1024  # 1MB chunks
+            while chunk := await file.read(chunk_size):
+                buffer.write(chunk)
+        
+        # Return success response with file info
+        file_size = os.path.getsize(file_location)
+        
+        print(f"File uploaded successfully: {file.filename}, Size: {file_size} bytes")
+        
+        return {
+            "filename": file.filename,
+            "size": file_size,
+            "url": f"/files/{file.filename}"
+        }
+    except Exception as e:
+        print(f"Error uploading file: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error uploading file: {str(e)}")
+
+@app.get("/api/files/list")
+async def list_files():
+    try:
+        files = []
+        for file_path in UPLOAD_DIR.glob("*"):
+            if file_path.is_file():
+                files.append({
+                    "filename": file_path.name,
+                    "size": os.path.getsize(file_path),
+                    "url": f"/files/{file_path.name}",
+                    "uploaded_at": os.path.getctime(file_path)
+                })
+        return {"files": files}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error listing files: {str(e)}")
+
+@app.delete("/api/files/{filename}")
+async def delete_file(filename: str):
+    try:
+        file_path = UPLOAD_DIR / filename
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        os.remove(file_path)
+        return {"message": f"File {filename} deleted successfully"}
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting file: {str(e)}")
+
+# WebSocket connections store
+active_connections: List[WebSocket] = []
+
+# WebSocket connection management
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    active_connections.append(websocket)
+    
+    try:
+        while True:
+            # Wait for client messages
+            data = await websocket.receive_text()
+            
+            if data == "start_generation":
+                # Start background task to generate articles
+                asyncio.create_task(generate_articles_async(websocket))
+            elif data == "stop_generation":
+                # Client wants to stop (implementation would require a more sophisticated
+                # mechanism to track and stop specific generation tasks)
+                await websocket.send_json({"type": "status", "data": {"message": "Generation stopped"}})
+    except Exception as e:
+        print(f"WebSocket error: {e}")
+    finally:
+        # Remove connection when client disconnects
+        if websocket in active_connections:
+            active_connections.remove(websocket)
+
+# Background task to generate articles
+async def generate_articles_async(websocket: WebSocket):
+    """Generate random articles asynchronously and send updates via WebSocket"""
+    try:
+        # Send initial status
+        await websocket.send_json({"type": "status", "data": {"message": "Starting article generation"}})
+        
+        # Generate 5 articles with a delay between each
+        for i in range(5):
+            # Create a random article
+            new_article = generate_random_article(i)
+            
+            # Add article to repository
+            service.add_article(new_article)
+            
+            # Broadcast to client
+            await websocket.send_json({
+                "type": "new_article", 
+                "data": new_article.dict()
+            })
+            
+            # Wait for 3 seconds before generating next article
+            await asyncio.sleep(3)
+        
+        # Send completion status
+        await websocket.send_json({"type": "status", "data": {"message": "Article generation complete"}})
+    
+    except Exception as e:
+        print(f"Error generating articles: {e}")
+        await websocket.send_json({"type": "status", "data": {"message": f"Error: {str(e)}"}})
+
+# Helper function to generate random articles
+def generate_random_article(counter: int) -> Article:
+    """Generate a random article for demonstration purposes"""
+    journals = ["Nature", "Science", "Cell", "PNAS", "Physical Review Letters"]
+    topics = ["Quantum Computing", "Machine Learning", "Climate Change", "Genetic Engineering", "Neuroscience"]
+    
+    current_time = int(time.time())
+    title = f"Generated Article on {topics[counter % len(topics)]} #{current_time}"
+    
+    return Article(
+        title=title,
+        authors=f"Auto Generator Bot {counter+1}",
+        journal=journals[counter % len(journals)],
+        abstract=f"This is an automatically generated article abstract with random data for demonstration purposes. Topic: {topics[counter % len(topics)]}",
+        year=random.randint(2010, 2024),
+        citations=random.randint(0, 50000),
+        coordinates=Coordinates(x=random.uniform(-50, 50), y=random.uniform(-50, 50)),
+        index=service.get_next_index()
+    )
 
 @app.get("/health")
 def health_check():

@@ -31,6 +31,21 @@ class Service:
         else:
             return articles
     
+    def get_next_index(self) -> int:
+        """Get the next available index for a new article"""
+        all_articles = self.repository.get_articles()
+        
+        if not all_articles:
+            return 1
+            
+        max_index = 0
+        for article in all_articles:
+            article_index = int(article.index) if article.index is not None else 0
+            if article_index > max_index:
+                max_index = article_index
+                
+        return max_index + 1
+    
     def add_article(self, article: Article):
         # article.embeddings = self.abstracts_encoder.encode(article.abstract)
         # article.coordinates = self.abstracts_encoder.get_coordinates(article.embeddings)
@@ -39,7 +54,10 @@ class Service:
             raise ValueError("Invalid article")
 
         article.embeddings = [0.1, 0.2, 0.3]
-        article.coordinates = Coordinates(x=0.1, y=0.2)
+        
+        # Only set coordinates if not already set
+        if not article.coordinates or (article.coordinates.x == 0 and article.coordinates.y == 0):
+            article.coordinates = Coordinates(x=0.1, y=0.2)
 
         self.repository.add_article(article)
 
