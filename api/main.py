@@ -36,6 +36,35 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 # Mount the uploads directory to make files accessible via HTTP
 app.mount("/files", StaticFiles(directory=str(UPLOAD_DIR)), name="files")
 
+# Add direct download endpoint with proper headers
+@app.get("/download/{filename}")
+async def download_file(filename: str):
+    file_path = UPLOAD_DIR / filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    # Determine content type
+    content_type = "application/octet-stream"  # Default for unknown file types
+    file_extension = filename.lower().split('.')[-1] if '.' in filename else ''
+    
+    if file_extension in ['jpg', 'jpeg', 'png', 'gif']:
+        content_type = f"image/{file_extension}"
+    elif file_extension == 'pdf':
+        content_type = "application/pdf"
+    elif file_extension in ['mp4', 'webm']:
+        content_type = f"video/{file_extension}"
+    
+    # Return file with Content-Disposition header to force download
+    headers = {
+        "Content-Disposition": f"attachment; filename={filename}"
+    }
+    
+    return Response(
+        content=file_path.read_bytes(),
+        media_type=content_type,
+        headers=headers
+    )
+
 class ArticleInput(BaseModel):
     title: str
     authors: str
