@@ -1,3 +1,4 @@
+'''
 import json
 from data.domain import Article
 
@@ -92,4 +93,45 @@ class Repository:
         
     def delete_article_by_index(self, index: int) -> None:
         self.articles = [article for article in self.articles if article.index != index]
-        
+'''
+
+from datalink.db_connection import SessionLocal
+from datalink.data_link import DataLink
+from data.domain import Article
+
+class Repository:
+    data_link: DataLink
+    
+    def __init__(self):
+        self.data_link = DataLink()
+    
+    def get_articles(self) -> list[Article]:
+        with SessionLocal() as db:
+            return self.data_link.get_articles(db)
+    
+    def get_articles_by_year(self, year: int) -> list[Article]:
+        with SessionLocal() as db:
+            return self.data_link.get_articles_by_year(db, year)
+    
+    def add_article(self, article: Article) -> Article:
+        with SessionLocal() as db:
+            return self.data_link.add_article(db, article)
+    
+    def update_article(self, article: Article) -> Article:
+        with SessionLocal() as db:
+            updated = self.data_link.update_article(db, article)
+            if not updated:
+                raise ValueError(f"Article with index {article.index} not found")
+            return updated
+    
+    def delete_article(self, article_id: str) -> None:
+        with SessionLocal() as db:
+            success = self.data_link.delete_article(db, int(article_id))
+            if not success:
+                raise ValueError(f"Article with id {article_id} not found")
+    
+    def delete_article_by_index(self, index: int) -> None:
+        with SessionLocal() as db:
+            success = self.data_link.delete_article(db, index)
+            if not success:
+                raise ValueError(f"Article with index {index} not found")

@@ -1,6 +1,11 @@
-fastapi>=0.95.0
-uvicorn>=0.21.1
-python-multipart>=0.0.5
+fastapi==0.104.1
+uvicorn==0.23.2
+sqlalchemy==2.0.22
+pydantic==2.4.2
+psycopg2-binary==2.9.9
+python-multipart==0.0.6
+passlib[bcrypt]==1.7.4
+python-jose[cryptography]==3.3.0
 aiofiles>=23.1.0
 numpy>=1.24.2
 scikit-learn>=1.2.2

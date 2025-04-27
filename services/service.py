@@ -59,7 +59,8 @@ class Service:
         if not article.coordinates or (article.coordinates.x == 0 and article.coordinates.y == 0):
             article.coordinates = Coordinates(x=0.1, y=0.2)
 
-        self.repository.add_article(article)
+        # Return the saved article with its database ID
+        return self.repository.add_article(article)
 
     def update_article(self, article: Article):
         # article.embeddings = self.abstracts_encoder.encode(article.abstract)

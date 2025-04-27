@@ -1,5 +1,4 @@
 from pydantic import BaseModel, Field
-import uuid
 
 class Coordinates(BaseModel):
     x: float
@@ -15,7 +14,8 @@ class Article(BaseModel):
     coordinates: Coordinates
     embeddings: list[float] = Field(default_factory=list)
     index: int = None
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    id: str = None
+    user_id: int = None
     
     def __init__(self, **data):
         if 'index' in data and data['index'] is not None:
